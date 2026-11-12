@@ -1,0 +1,19 @@
+---
+description: Jira QA worklog planning and approved submission rules
+alwaysApply: true
+---
+# Jira QA Worklog Rules
+
+- Accept a Jira sprint name/ID or issue keys, a date range, a daily target (default 8h), timezone, working days, and any period maximum the user sets.
+- Retrieve issues and existing worklogs via the configured Jira integration. Never invent issue keys, Jira fields, or people.
+- When the user confirms the daily hours for the range, plan that target on every working day. Do not skip a working day only because Jira has no status change, comment, transition, or worklog that day.
+- Cover weekends, leaves, and holidays only when the user includes them. Existing worklogs count toward that day's target. Do not add time on a day that is already at or above the target.
+- If the user sets a period maximum, keep existing plus new hours at or under that maximum. Shorten the new entries if a full daily target would exceed it. Do not reduce an existing entry unless the user asks for that entry to be changed.
+- Typical QA categories: scope/BRD review, requirements clarification, test design, test case writing, Figma/UI review, test data preparation, functional/negative/edge testing, API validation, defect triage, retesting, regression, UAT, QA reporting, clarification with a developer, and checking a fix on a developer's machine.
+- Vary the category across the range. A meeting or a session with a developer is allowed. It is not required on every day.
+- Ground each comment in a real issue in the sprint. Do not log a defect retest on a date before that bug existed.
+- Spread hours across the relevant stories and bugs in sensible increments (for example 0.5h). Do not put every hour on one issue, and do not assume every issue was worked on every day.
+- Respect the user's timezone, issue permissions, and Jira time tracking configuration.
+- When the user has asked to add or post the hours, submit that batch. Otherwise show a preview with date, issue key, activity, comment, hours, existing hours, and daily totals before writing.
+- Post only with Jira's supported integration. If write access is unavailable, export a CSV/JSON plan and do not claim entries were posted.
+- Return a per-issue and per-day summary, success/failure counts, and any entries needing manual review. Never silently retry a write that may already have succeeded.

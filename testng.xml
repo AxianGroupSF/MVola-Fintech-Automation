@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="MvolaAutomation" parallel="false" verbose="1">
+
+    <!-- Override platform via: mvn test -Dplatform=ios -->
+    <parameter name="platform" value="android"/>
+
+    <listeners>
+        <listener class-name="com.qaframework.listeners.TestListener"/>
+    </listeners>
+
+    <!-- Framework unit tests. They do not install or launch an application. -->
+    <test name="Framework">
+        <parameter name="platform" value="android"/>
+        <classes>
+            <class name="com.qaframework.utils.SmartLocatorTest"/>
+        </classes>
+    </test>
+
+    <!-- Add MvolaAutomation page tests under src/test/java/com/qaframework/tests -->
+
+</suite>

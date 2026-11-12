@@ -1,0 +1,109 @@
+{% extends "base.html.j2" %}
+{% import "macros.html.j2" as ui %}
+{% block content %}
+{% call ui.section("Dashboard", 1, show_count=False, scroll=False) %}
+<div class="grid kpis">
+  <a class="card kpi kpi-link" href="cases.html?f=all"><div class="v">{{ m.summary.total }}</div><div class="l">Tests</div></a>
+  <a class="card kpi kpi-link" href="cases.html?f=passed"><div class="v green">{{ m.summary.passed }}</div><div class="l">Passed</div></a>
+  <a class="card kpi kpi-link" href="cases.html?f=failed"><div class="v red">{{ m.summary.failed }}</div><div class="l">Failed</div></a>
+  <a class="card kpi kpi-link" href="cases.html?f=broken"><div class="v orange">{{ m.summary.broken }}</div><div class="l">Broken</div></a>
+  <a class="card kpi kpi-link" href="cases.html?f=skipped"><div class="v grey">{{ m.summary.skipped }}</div><div class="l">Skipped</div></a>
+  <a class="card kpi kpi-link" href="cases.html?f=blocked"><div class="v orange">{{ m.summary.blocked|default(0) }}</div><div class="l">Could not run</div></a>
+  <div class="card kpi"><div class="v">{{ m.summary.pass_rate }}%</div><div class="l">Pass rate (completed)</div></div>
+</div>
+<p class="small muted">Click a status tile to open filtered cases. Base URL: {{ m.base_url }} &middot; Python {{ m.python }} &middot; {{ m.platform }}</p>
+{% if m.ai_summary %}<div class="ai"><b>AI analysis{% if m.ai_generated_by %} ({{ m.ai_generated_by }}){% endif %}:</b> {{ m.ai_summary }}</div>{% endif %}
+{% endcall %}
+
+{% call ui.section("Features and modules", m.features|default([])|length) %}
+{{ ui.feature_overview(m.features|default([])) }}
+{% endcall %}
+
+{% call ui.section("Could not run (environment / setup)", m.blocked_tests|default([])|length) %}
+{% if m.blocked_tests %}
+<table>
+  <tr><th>#</th><th>Test case</th><th>Endpoint</th><th>Problem</th><th>Actual</th></tr>
+  {% for f in m.blocked_tests %}
+  <tr><td>{{ loop.index }}</td><td>{{ f.case_id }}</td><td>{{ f.endpoint }}</td>
+      <td>{{ f.title }}</td><td class="small">{{ f.actual_result or f.actual_status or "no response" }}</td></tr>
+  {% endfor %}
+</table>
+<p class="small muted">These checks never reached the intended assertion. They are not product defects.</p>
+{% else %}<p class="empty">No environment or setup blockers.</p>{% endif %}
+{% endcall %}
+
+{% call ui.section("Product defect summary", m.failures|length) %}
+{% if m.failures %}
+<table>
+  <tr><th>#</th><th>Test case</th><th>Endpoint</th><th>Severity</th><th>Problem</th><th>Expected</th><th>Actual</th></tr>
+  {% for f in m.failures %}
+  <tr><td>{{ loop.index }}</td><td><a href="#{{ f.case_id }}">{{ f.case_id }}</a></td><td>{{ f.endpoint }}</td>
+      <td><span class="pill p-{{ f.severity }}">{{ f.severity }}</span></td><td>{{ f.title }}</td>
+      <td>{{ f.expected_status|join(" / ") or "-" }}</td><td>{{ f.actual_status or "no response" }}</td></tr>
+  {% endfor %}
+</table>
+{% else %}<p class="empty">No product defects among the checks that completed.</p>{% endif %}
+{% endcall %}
+
+{% call ui.section("Not executed - reasons", m.skip_reasons|length) %}
+{% if m.skip_reasons %}
+<table><tr><th>Reason</th><th>Tests</th><th>Endpoints affected</th></tr>
+{% for s in m.skip_reasons %}<tr><td>{{ s.reason }}</td><td>{{ s.count }}</td><td class="small">{{ s.endpoints|join(", ") }}</td></tr>{% endfor %}</table>
+{% else %}<p class="empty">Every test was executed.</p>{% endif %}
+{% endcall %}
+
+{% call ui.section("Per-endpoint results", m.endpoints|length) %}
+<table>
+  <tr><th>Endpoint</th><th>Health</th><th>Passed</th><th>Failed</th><th>Broken</th><th>Skipped</th><th>Status codes covered</th></tr>
+  {% for e in m.endpoints %}
+  <tr><td>{{ e.endpoint }}{% if e.ai_note %}<div class="ai small">{{ e.ai_note }}</div>{% endif %}</td>
+      <td><span class="pill p-{{ e.health|replace(' ', '-') }}">{{ e.health }}</span></td>
+      <td>{{ e.passed }}</td><td>{{ e.failed }}</td><td>{{ e.broken }}</td><td>{{ e.skipped }}</td>
+      <td>{{ e.status_codes|join(", ") }}</td></tr>
+  {% endfor %}
+</table>
+{% endcall %}
+
+{% call ui.section("Failure details, fix suggestions and evidence", m.failures|length, big_at=3) %}
+{% for f in m.failures %}
+<details class="item" id="{{ f.case_id }}" open>
+  <summary><span class="pill p-{{ f.severity }}">{{ f.severity }}</span> {{ f.case_id }} &middot; {{ f.endpoint }} &middot; {{ f.title }}</summary>
+  <div>
+    <p><b>Scenario:</b> {{ f.summary }}<br><b>Expected:</b> {{ f.expected_result }}<br><b>Actual:</b> {{ f.error }}</p>
+    <div class="fix"><b>Suggested fix (rule-based):</b> {{ f.fix }}</div>
+    {% if f.ai_fix %}<div class="ai"><b>AI suggestion:</b> {{ f.ai_fix }}</div>{% endif %}
+    {% for c in f.calls %}
+      <h3>{{ c.method }} {{ c.url }} &rarr; {{ c.status or c.error }} ({{ c.duration_ms }} ms) <span class="muted small">[{{ c.client }}]</span></h3>
+      <b class="small">Reproduce</b><pre>{{ c.curl }}</pre>
+      <b class="small">Request headers</b><pre>{{ c.request_headers|tojson(indent=2) }}</pre>
+      {% if c.request_body %}<b class="small">Request body</b><pre>{{ c.request_body }}</pre>{% endif %}
+      {% if c.response_headers %}<b class="small">Response headers</b><pre>{{ c.response_headers|tojson(indent=2) }}</pre>{% endif %}
+      {% if c.response_body %}<b class="small">Response body</b><pre>{{ c.response_body }}</pre>{% endif %}
+    {% endfor %}
+    <b class="small">Traceback</b><pre>{{ f.traceback }}</pre>
+    <b class="small">Test log</b><pre>{{ f.log }}</pre>
+  </div>
+</details>
+{% else %}<p class="empty">No failures.</p>
+{% endfor %}
+{% endcall %}
+
+{% call ui.section("All tests with complete logs", m.tests|length) %}
+<input class="search" placeholder="Filter by ID, endpoint or status..." oninput="
+  const q=this.value.toLowerCase(); document.querySelectorAll('.t-row').forEach(d=>d.style.display=d.dataset.k.includes(q)?'':'none');">
+{% for t in m.tests %}
+<details class="item t-row" data-k="{{ (t.case_id ~ ' ' ~ t.endpoint ~ ' ' ~ t.status ~ ' ' ~ t.summary)|lower }}">
+  <summary><span class="pill p-{{ t.status }}">{{ t.status_label }}</span> {{ t.case_id }} &middot; {{ t.endpoint }} &middot; {{ t.summary }} <span class="muted small">({{ t.duration_ms }} ms)</span></summary>
+  <div>
+    {% if t.skip_reason %}<p><b>Skipped:</b> {{ t.skip_reason }}</p>{% endif %}
+    {% for c in t.calls %}
+      <h3>{{ c.method }} {{ c.url }} &rarr; {{ c.status or c.error }} ({{ c.duration_ms }} ms)</h3>
+      <pre>{{ c.curl }}</pre>
+      {% if c.response_body %}<pre>{{ c.response_body }}</pre>{% endif %}
+    {% endfor %}
+    {% if t.log %}<b class="small">Log</b><pre>{{ t.log }}</pre>{% endif %}
+  </div>
+</details>
+{% endfor %}
+{% endcall %}
+{% endblock %}

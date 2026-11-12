@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>CTO email draft - {{ m.project_name }}</title>
+<style>
+  body { font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif; color:#1d2733; background:#f5f7f9; margin:0; }
+  .wrap { max-width:760px; margin:30px auto; background:#fff; border:1px solid #e3e7eb; border-radius:10px; padding:28px 34px; }
+  .note { background:#eef5ff; border-left:4px solid #1f4e79; padding:10px 12px; font-size:13px; margin-bottom:18px; }
+  .subject { font-size:15px; margin-bottom:18px; } table { border-collapse:collapse; margin:10px 0 16px; }
+  td { padding:5px 14px 5px 0; font-size:14px; } .pill { padding:3px 10px; border-radius:999px; color:#fff; font-weight:600; }
+  .green{background:#1e9e5a}.red{background:#d64545}.amber{background:#e0a91e}.grey{background:#9aa3ad}.review{background:#6b4fbb}
+</style></head>
+<body><div class="wrap">
+<div class="note">Draft generated from run {{ m.run_id }}. Review, fill any [placeholders], attach the PDFs and send.</div>
+<div class="subject"><b>Subject:</b> {{ m.api_title }} test results - {{ m.environment }} - {{ m.recommendation.verdict }}</div>
+<p>Dear {{ cto_name or "[CTO name]" }},</p>
+<p>Please find below the {{ m.results_phrase }} for <b>{{ m.project_name }}</b> on the <b>{{ m.environment }}</b> environment
+  (build {{ m.build_version }}), executed on {{ m.started_at }}.</p>
+<table>
+  <tr><td>Recommendation</td><td><span class="pill {{ m.recommendation.color }}">{{ m.recommendation.verdict }}</span></td></tr>
+  <tr><td>{{ m.area_word }} covered</td><td><b>{{ m.endpoints|length }}</b></td></tr>
+  <tr><td>Automated checks</td><td><b>{{ m.summary.total }}</b> ({{ m.summary.completed|default(m.summary.executed) }} completed, {{ m.summary.blocked|default(0) }} could not run, {{ m.summary.skipped }} not executed)</td></tr>
+  <tr><td>Passed</td><td><b>{{ m.summary.passed }}</b> ({{ m.summary.pass_rate }}% of completed)</td></tr>
+  <tr><td>Product defects</td><td><b>{{ m.failures|length }}</b> ({% for s in ["Critical","High","Medium","Low"] %}{{ m.by_severity.get(s, 0) }} {{ s }}{% if not loop.last %}, {% endif %}{% endfor %})</td></tr>
+</table>
+<p>{{ m.recommendation.reason }}</p>
+{% if m.ai_summary %}<p>{{ m.ai_summary }}</p>{% endif %}
+{% if top_issues %}<p><b>Key issues</b></p><ol>
+{% for f in top_issues %}<li>[{{ f.severity }}] {{ f.endpoint }}: {{ f.title }} ({{ f.case_id }})</li>{% endfor %}</ol>{% endif %}
+<p><b>Next steps</b></p><ul>
+{% if m.blocked_tests %}<li>QA to clear the environment / setup blocker and re-run the {{ m.summary.blocked }} check(s) that could not run. Do not treat those as product bugs.</li>{% endif %}
+{% if m.failures %}<li>Development team to fix the {{ m.by_severity.get('Critical', 0) + m.by_severity.get('High', 0) }} critical/high product issue(s); details and fix suggestions are in the attached Dev report.</li>
+<li>QA to re-run the full suite once fixes are deployed and confirm closure.</li>
+{% elif not m.blocked_tests %}<li>No blocking product issues. QA will continue regression runs on each new build.</li>{% endif %}
+{% if m.skipped %}<li>{{ m.skipped|length }} check(s) were not executed and will be covered separately.</li>{% endif %}
+</ul>
+<p>Attachments: QA_Lead_Report.pdf, Stakeholder_Report.pdf{% if m.failures %}, Dev_Report.pdf{% endif %}</p>
+<p>Best regards,<br>{{ qa_lead_name or "[QA Lead name]" }}<br>QA Lead</p>
+</div></body></html>

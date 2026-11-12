@@ -1,0 +1,113 @@
+{% extends "base.html.j2" %}
+{% import "macros.html.j2" as ui %}
+{% block content %}
+{% call ui.section("Dashboard", 1, show_count=False, scroll=False) %}
+<div class="grid two">
+  <div class="card">
+    <div class="muted small">RELEASE RECOMMENDATION</div>
+    <p><span class="pill p-{{ m.recommendation.color }} verdict-pill">{{ m.recommendation.verdict }}</span></p>
+    <p>{{ m.recommendation.reason }}</p>
+    {% if m.ai_summary %}<div class="ai"><b>Analyst summary:</b> {{ m.ai_summary }}</div>{% endif %}
+  </div>
+  <div class="card" style="display:flex;gap:22px;align-items:center">
+    {{ charts.donut | safe }}
+    <div class="legend stack">
+      <span><i style="background:#1e9e5a"></i>Passed {{ m.summary.passed }}</span>
+      <span><i style="background:#d64545"></i>Failed {{ m.summary.failed }}</span>
+      <span><i style="background:#e08a1e"></i>Broken {{ m.summary.broken }}</span>
+      <span><i style="background:#9aa3ad"></i>Skipped {{ m.summary.skipped }}</span>
+    </div>
+  </div>
+</div>
+<div class="grid kpis" style="margin-top:14px">
+  <a class="card kpi kpi-link" href="cases.html?f=all"><div class="v">{{ m.summary.total }}</div><div class="l">Automated tests</div></a>
+  <div class="card kpi"><div class="v {{ 'review' if m.summary.completed_pct|default(m.summary.executed_pct) < m.min_executed_pct else '' }}">{{ m.summary.completed_pct|default(m.summary.executed_pct) }}%</div><div class="l">Completed ({{ m.summary.completed|default(m.summary.executed) }})</div></div>
+  <div class="card kpi"><div class="v">{{ m.summary.pass_rate }}%</div><div class="l">Pass rate (completed)</div></div>
+  <a class="card kpi kpi-link" href="cases.html?f=product"><div class="v red">{{ m.failures|length }}</div><div class="l">Product defects</div></a>
+  <a class="card kpi kpi-link" href="cases.html?f=product"><div class="v red">{{ m.by_severity.get('Critical', 0) }}</div><div class="l">Critical</div></a>
+  <a class="card kpi kpi-link" href="cases.html?f=skipped"><div class="v grey">{{ m.summary.skipped }}</div><div class="l">Not executed</div></a>
+</div>
+<p class="small muted" style="margin-top:8px">Click a status tile to open filtered cases with expandable details.</p>
+<div class="grid two" style="margin-top:14px">
+  <div class="card"><h3>Issues by severity</h3><div class="chart-box">{{ charts.severity | safe }}</div></div>
+  <div class="card"><h3>Results by endpoint <span class="muted small">({{ m.endpoints|length }})</span></h3>
+    <div class="chart-box">{{ charts.endpoints | safe }}</div></div>
+</div>
+{% endcall %}
+
+{% call ui.section("Features and modules", m.features|default([])|length) %}
+{{ ui.feature_overview(m.features|default([])) }}
+{% endcall %}
+
+{% set findings %}
+<ul>
+  <li>{{ m.summary.completed|default(m.summary.executed) }} of {{ m.summary.total }} automated checks completed on <b>{{ m.environment }}</b> ({{ m.summary.completed_pct|default(m.summary.executed_pct) }}%); {{ m.summary.passed }} passed ({{ m.summary.pass_rate }}% of completed).</li>
+  {% for s in m.blocker_reasons %}<li><b>Could not run:</b> {{ s.count }} check(s) across {{ s.endpoints|length }} endpoint(s) - {{ s.reason }}.</li>{% endfor %}
+  {% for s in m.skip_reasons %}<li><b>Not executed:</b> {{ s.count }} check(s) across {{ s.endpoints|length }} endpoint(s) - {{ s.reason }}.</li>{% endfor %}
+  <li>{{ m.failures|length }} product defect(s): {% for s in ["Critical","High","Medium","Low"] %}{{ m.by_severity.get(s, 0) }} {{ s }}{% if not loop.last %}, {% endif %}{% endfor %}.</li>
+  {% for cat, n in m.by_category.most_common(5) %}<li>{{ cat }}: {{ n }} occurrence(s).</li>{% endfor %}
+  {% set bad = m.endpoints|selectattr("health", "equalto", "Failing")|map(attribute="endpoint")|list %}
+  <li>Endpoints failing: {{ bad|join(", ") if bad else "none" }}.</li>
+</ul>
+<p class="small">A ready-to-send draft is in <b>CTO_Email_Draft.html</b> / <b>CTO_Email_Draft.txt</b> in this run folder.</p>
+{% endset %}
+{% call ui.section("Key findings for the CTO email", 1, show_count=False) %}{{ findings }}{% endcall %}
+
+{% call ui.section("Failure summary", m.failures|length) %}
+{% if m.failures %}
+<table>
+  <tr><th>#</th><th>Severity</th><th>Endpoint</th><th>Issue</th><th>Test case</th><th>Suggested fix</th></tr>
+  {% for f in m.failures %}
+  <tr><td>{{ loop.index }}</td><td><span class="pill p-{{ f.severity }}">{{ f.severity }}</span></td><td>{{ f.endpoint }}</td>
+      <td>{{ f.title }}<div class="muted small">{{ f.summary }}</div></td><td>{{ f.case_id }}</td>
+      <td class="small">{{ f.ai_fix or f.fix }}</td></tr>
+  {% endfor %}
+</table>
+{% else %}<p class="empty">No failures among the executed checks.</p>{% endif %}
+{% endcall %}
+
+{% call ui.section("Not executed - reasons", m.skip_reasons|length) %}
+{% if m.skip_reasons %}
+<table><tr><th>Reason</th><th>Checks</th><th>Endpoints affected</th></tr>
+{% for s in m.skip_reasons %}<tr><td>{{ s.reason }}</td><td>{{ s.count }}</td><td class="small">{{ s.endpoints|join(", ") }}</td></tr>{% endfor %}</table>
+{% else %}<p class="empty">Every automated check was executed.</p>{% endif %}
+{% endcall %}
+
+{% call ui.section("Endpoint health", m.endpoints|length) %}
+<table>
+  <tr><th>Endpoint</th><th>Health</th><th>Passed / Executed / Total</th><th>Status codes verified</th><th>Notes</th></tr>
+  {% for e in m.endpoints %}
+  <tr><td>{{ e.endpoint }}</td><td><span class="pill p-{{ e.health|replace(' ', '-') }}">{{ e.health }}</span></td>
+      <td>{{ e.passed }} / {{ e.executed }} / {{ e.total }}</td><td>{{ e.status_codes|join(", ") }}</td><td class="small">{{ e.ai_note }}</td></tr>
+  {% endfor %}
+</table>
+{% endcall %}
+
+{% call ui.section("Coverage by test type", m.by_type|length) %}
+<table><tr><th>Test type</th><th>Tests</th></tr>
+{% for k, v in m.by_type.most_common() %}<tr><td>{{ k }}</td><td>{{ v }}</td></tr>{% endfor %}</table>
+{% endcall %}
+
+{% call ui.section("Not executed - individual checks", m.skipped|length) %}
+{% if m.skipped %}
+<table><tr><th>Test case</th><th>Endpoint</th><th>Reason</th></tr>
+{% for t in m.skipped %}<tr><td>{{ t.case_id }}</td><td>{{ t.endpoint }}</td><td>{{ t.skip_reason }}</td></tr>{% endfor %}</table>
+{% else %}<p class="empty">None.</p>{% endif %}
+{% endcall %}
+
+{% call ui.section("Manual / not automated test cases", m.manual_cases|length) %}
+{% if m.manual_cases %}
+<table><tr><th>ID</th><th>Endpoint</th><th>Summary</th><th>Reason</th></tr>
+{% for c in m.manual_cases %}<tr><td>{{ c.id }}</td><td>{{ c.endpoint }}</td><td>{{ c.summary }}</td><td>{{ c.manual_reason or "Not automated" }}</td></tr>{% endfor %}</table>
+{% else %}<p class="empty">All planned cases are automated.</p>{% endif %}
+{% endcall %}
+
+{% call ui.section("Run details", 4, show_count=False) %}
+<table>
+  <tr><th>Environment</th><td>{{ m.environment }} ({{ m.base_url }})</td></tr>
+  <tr><th>Build</th><td>{{ m.build_version }}</td></tr>
+  <tr><th>Started / finished</th><td>{{ m.started_at }} / {{ m.finished_at }} ({{ m.duration_s }} s)</td></tr>
+  <tr><th>Executed by</th><td>{{ m.assignee or "-" }}</td></tr>
+</table>
+{% endcall %}
+{% endblock %}

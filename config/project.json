@@ -1,0 +1,37 @@
+{
+  "project_name": "MvolaAutomation",
+  "domain": "ui",
+  "default_environment": "qa",
+  "assignee": "Automation Team",
+  "build_version": "TBD",
+  "qa_lead_name": "",
+  "cto_name": "",
+  "confluence_sources": [],
+  "secrets": [
+    "pin",
+    "otp",
+    "phone",
+    "password",
+    "username",
+    "deviceLockPin"
+  ],
+  "mask_keys": [
+    "password",
+    "passwd",
+    "secret",
+    "token",
+    "pin",
+    "otp",
+    "phone",
+    "apikey",
+    "api_key",
+    "authorization",
+    "cookie"
+  ],
+  "response_time_sla_ms": 30000,
+  "min_executed_percent": 80,
+  "reports": {
+    "optional": [],
+    "_help": "Optional reports built for every run of this suite: allure, stakeholder, qa_lead, cto_email. Empty = only Dev, QA and Ready to Report Bugs."
+  }
+}

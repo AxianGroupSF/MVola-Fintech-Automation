@@ -1,0 +1,21 @@
+{% extends "base.html.j2" %}
+{% import "macros.html.j2" as ui %}
+{% block banner %}{% endblock %}
+{% block content %}
+<p class="crumb">
+  <a href="index.html">Reports</a>
+  &middot; <a href="Dev_Report.html">Dev</a>
+  &middot; <a href="QA_Report.html">QA</a>
+  &middot; Cases
+</p>
+
+<div class="card" style="margin-top:8px">
+  <h2 style="margin:0 0 6px">Test cases</h2>
+  <p class="muted small" style="margin:0 0 12px">{{ m.project_name }} · {{ m.environment }} · {{ m.run_id }}</p>
+  {{ ui.case_filter_bar(filter_counts, active=active_filter) }}
+</div>
+
+<div style="margin-top:14px">
+{{ ui.cases_table(m.tests, asset_prefix='', open_failed=(active_filter in ('failed', 'broken', 'product', 'blocked')), column_options=column_options) }}
+</div>
+{% endblock %}

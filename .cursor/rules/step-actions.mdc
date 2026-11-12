@@ -1,0 +1,19 @@
+---
+description: Mandatory checks, waits, screenshots, and Extent evidence for every mobile test step
+alwaysApply: false
+---
+# Step actions
+
+Every UI step goes through `MobileActions`, `ElementUtils`, or `BasePage`. Do not call the driver or `WebElement` directly from a page or test.
+
+Before each action:
+
+- Confirm the target is present, visible, and enabled or clickable with `WaitUtils`. Use the configured explicit wait.
+- Do not call `Thread.sleep` or `WaitUtils` hard waits.
+- Capture a step screenshot with `ScreenshotUtils.captureStep` (saved under `reports/images` only; Extent gets pass/fail screenshots from `BaseTest` `@AfterMethod`).
+- Prefer `PlatformLocator` accessibility id, resource id, or text. Do not add an XPath when one of those locators identifies the element.
+- Do not hardcode coordinates. Gestures use the current window size.
+
+After the action, verify the expected next screen with `verifyDisplayed` or the `expectedNextState` overload before the next step.
+
+If the element is missing, hidden, or not interactable when the wait expires, capture a screenshot, attach it to Extent, and fail with `StepFailureException` including the step name and locator.

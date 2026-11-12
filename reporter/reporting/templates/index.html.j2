@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ m.project_name }} - {{ m.run_id }}</title>
+<style>
+  :root { --ink:#1d2733; --muted:#5b6773; --line:#e3e7eb; --green:#1e9e5a; --red:#d64545; --amber:#e0a91e; --grey:#9aa3ad; --review:#6b4fbb; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; font-size:14px;
+         color:var(--ink); background:linear-gradient(180deg,#eef3f9 0,#f7f9fb 340px); }
+  header { background:linear-gradient(120deg,#16385a 0%,#1f4e79 45%,#2f7bbf 100%); color:#fff; padding:34px 40px 70px; }
+  header h1 { margin:0 0 6px; font-size:26px; }
+  header .meta { opacity:.9; font-size:14px; }
+  main { max-width:1100px; margin:-48px auto 60px; padding:0 32px; }
+  .hero { display:grid; grid-template-columns:260px 1fr; gap:18px; }
+  @media (max-width:820px){ .hero { grid-template-columns:1fr; } }
+  .card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:18px 20px; box-shadow:0 6px 18px rgba(20,40,70,.07); }
+  .donut { display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .legend span { display:inline-flex; align-items:center; gap:6px; margin:0 12px 4px 0; font-size:12px; color:var(--muted); }
+  .legend i { width:10px; height:10px; border-radius:2px; display:inline-block; }
+  .verdict { display:inline-block; color:#fff; font-weight:700; font-size:16px; padding:6px 16px; border-radius:999px; }
+  .c-green{background:var(--green)} .c-red{background:var(--red)} .c-amber{background:var(--amber)} .c-grey{background:var(--grey)} .c-review{background:var(--review)}
+  .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:14px; }
+  .kpi { border-radius:12px; padding:12px 14px; color:#fff; text-decoration:none; display:block; transition:transform .12s, box-shadow .12s; }
+  a.kpi:hover { transform:translateY(-1px); box-shadow:0 8px 18px rgba(0,0,0,.18); }
+  .kpi .v { font-size:24px; font-weight:700; } .kpi .l { font-size:12px; opacity:.92; text-transform:uppercase; letter-spacing:.04em; }
+  .k1{background:linear-gradient(135deg,#1f4e79,#3a78b5)} .k2{background:linear-gradient(135deg,#17844a,#2fb872)}
+  .k3{background:linear-gradient(135deg,#b3261e,#e05a4f)} .k4{background:linear-gradient(135deg,#6b7480,#9aa3ad)}
+  .banner { border-radius:12px; padding:12px 16px; margin-top:14px; background:#f1ecfb; border-left:6px solid var(--review); }
+  .banner.grey { background:#eef0f2; border-color:var(--grey); }
+  h2 { font-size:18px; margin:30px 0 12px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+  .small { color:var(--muted); font-size:12px; }
+  tr.row-link { cursor:pointer; transition:background .12s; }
+  tr.row-link:hover, tr.row-link:focus { background:#eef5ff; outline:none; }
+  .feature-link { color:#1f4e79; font-weight:600; }
+  .reports { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:14px; }
+  .rep { display:flex; gap:14px; align-items:flex-start; text-decoration:none; color:inherit; border-top:5px solid; transition:transform .12s, box-shadow .12s; }
+  .rep:hover { transform:translateY(-2px); box-shadow:0 10px 24px rgba(20,40,70,.12); }
+  .tag { flex:0 0 44px; height:44px; border-radius:12px; color:#fff; font-weight:800; font-size:16px; display:flex; align-items:center; justify-content:center; }
+  .rep h3 { margin:0 0 2px; font-size:15px; } .rep .who { font-size:12px; font-weight:600; margin-bottom:4px; }
+  .rep p { margin:0; color:var(--muted); font-size:13px; }
+  .alt { display:inline-block; margin-top:8px; font-size:12px; font-weight:600; text-decoration:none; padding:2px 10px; border-radius:999px; background:#eef2f6; color:#1f4e79; }
+  .raw { margin-top:26px; color:var(--muted); font-size:13px; }
+  .raw code { background:#eef2f6; padding:1px 6px; border-radius:4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>{{ m.project_name }} &middot; {{ m.run_kind }}</h1>
+  <div class="meta">Environment <b>{{ m.environment }}</b> &middot; Build {{ m.build_version }} &middot; {{ m.started_at }} ({{ m.duration_s }} s) &middot; Run {{ m.run_id }}</div>
+</header>
+<main>
+  <div id="file-warn" class="banner grey" style="display:none;margin:0 0 18px">
+    <b>Chrome blocks these links when the page is opened as a local file.</b>
+    Double-click <code>Open Reports (Mac).command</code> or <code>Open Reports (Windows).bat</code> in the suite folder,
+    or run <code>python scripts/open_reports.py</code>.
+  </div>
+  <script>if (location.protocol === "file:") document.getElementById("file-warn").style.display = "block";</script>
+  <div class="hero">
+    <div class="card donut">
+      {{ charts.donut | safe }}
+      <div class="legend">
+        <span><i style="background:#1e9e5a"></i>Passed</span><span><i style="background:#d64545"></i>Failed</span>
+        <span><i style="background:#e08a1e"></i>Could not run</span><span><i style="background:#9aa3ad"></i>Not run</span>
+      </div>
+    </div>
+    <div class="card">
+      <div style="color:var(--muted);font-size:12px;letter-spacing:.04em">RELEASE RECOMMENDATION</div>
+      <p><span class="verdict c-{{ m.recommendation.color }}">{{ m.recommendation.verdict }}</span></p>
+      <p style="margin:0">{{ m.recommendation.reason }}</p>
+      <div class="kpis">
+        <a class="kpi k1" href="cases.html?f=all"><div class="v">{{ m.summary.total }}</div><div class="l">Tests</div></a>
+        <a class="kpi k2" href="cases.html?f=passed"><div class="v">{{ m.summary.passed }}</div><div class="l">Passed</div></a>
+        <a class="kpi k3" href="cases.html?f=product"><div class="v">{{ m.failures|length }}</div><div class="l">Product defects</div></a>
+        <a class="kpi k4" href="cases.html?f=blocked"><div class="v">{{ m.summary.blocked|default(0) }}</div><div class="l">Could not run</div></a>
+      </div>
+      <p class="small" style="margin:10px 0 0">Click a tile for filtered cases · <a href="cases.html">All cases</a></p>
+    </div>
+  </div>
+
+  <h2>Features and modules</h2>
+  <div class="card" style="overflow:auto; max-height:280px">
+    {% if m.features %}
+    <table>
+      <tr><th>Feature / module</th><th>Total</th><th>Passed</th><th>Failed</th><th>Could not run</th><th>Overview</th></tr>
+      {% for f in m.features %}
+      <tr{% if f.href %} class="row-link" tabindex="0" role="link" data-href="{{ f.href }}" title="Open {{ f.feature }} details"{% endif %}>
+        <td><span class="feature-link">{{ f.feature }}</span></td>
+        <td>{{ f.total }}</td>
+        <td>{{ f.passed }}</td>
+        <td>{{ f.product_fail }}</td>
+        <td>{{ f.blocked }}</td>
+        <td class="small">{{ f.summary }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}<p class="small">No features in this run.</p>{% endif %}
+  </div>
+
+  <h2>Reports</h2>
+  <div class="reports">
+    {% for r in reports %}
+    <div class="card rep" style="border-top-color:{{ r.color }}">
+      <div class="tag" style="background:{{ r.color }}">{{ r.tag }}</div>
+      <div>
+        <a href="{{ r.href }}" style="color:inherit;text-decoration:none"><h3>{{ r.title }}</h3></a>
+        <div class="who" style="color:{{ r.color }}">{{ r.who }}</div>
+        <p>{{ r.text }}</p>
+        <a class="alt" href="{{ r.href }}">Open</a>
+        {% if r.pdf %}<a class="alt" href="{{ r.pdf }}">{{ r.pdf.rsplit(".", 1)[-1]|upper }}</a>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="raw">Raw data: <code>run.json</code> &middot; <code>logs/execution.log</code> &middot; executed test case workbook (<code>.xlsx</code>) in this folder.</p>
+</main>
+<script>
+  document.querySelectorAll("tr.row-link[data-href]").forEach((row) => {
+    const go = () => { location.href = row.getAttribute("data-href"); };
+    row.addEventListener("click", go);
+    row.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); go(); }
+    });
+  });
+</script>
+</body>
+</html>

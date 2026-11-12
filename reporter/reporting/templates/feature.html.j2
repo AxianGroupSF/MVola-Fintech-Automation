@@ -1,0 +1,37 @@
+{% extends "base.html.j2" %}
+{% import "macros.html.j2" as ui %}
+{% block banner %}{% endblock %}
+{% block content %}
+<p class="crumb">
+  <a href="{{ asset_prefix }}index.html">Reports</a>
+  &middot; <a href="{{ asset_prefix }}Dev_Report.html">Dev</a>
+  &middot; <a href="{{ asset_prefix }}QA_Report.html">QA</a>
+  &middot; <a href="{{ asset_prefix }}cases.html">Cases</a>
+  &middot; Feature detail
+</p>
+
+<div class="card" style="margin-top:8px">
+  <h2 style="margin:0 0 6px">{{ feature.feature }}</h2>
+  <p class="muted small" style="margin:0 0 10px">{{ feature.summary }}</p>
+  <div class="grid kpis" style="margin:0" data-kpi-filters>
+    <a class="card kpi kpi-link kpi-all" href="#filter=all" data-filter="all"><div class="v">{{ feature.total }}</div><div class="l">Total</div></a>
+    <a class="card kpi kpi-link kpi-passed" href="#filter=passed" data-filter="passed"><div class="v green">{{ feature.passed }}</div><div class="l">Passed</div></a>
+    <a class="card kpi kpi-link kpi-failed" href="#filter=failed" data-filter="failed"><div class="v red">{{ feature.failed }}</div><div class="l">Failed</div></a>
+    <a class="card kpi kpi-link kpi-failed" href="#filter=product" data-filter="product"><div class="v red">{{ feature.product_fail }}</div><div class="l">Product fail</div></a>
+    <a class="card kpi kpi-link kpi-blocked" href="#filter=blocked" data-filter="blocked"><div class="v orange">{{ feature.blocked }}</div><div class="l">Could not run</div></a>
+    <a class="card kpi kpi-link kpi-skipped" href="#filter=skipped" data-filter="skipped"><div class="v grey">{{ feature.skipped }}</div><div class="l">Not run</div></a>
+    {% if feature.screenshot_count %}
+    <div class="card kpi"><div class="v">{{ feature.screenshot_count }}</div><div class="l">Screenshots</div></div>
+    {% endif %}
+  </div>
+  <p style="margin:12px 0 0"><span class="pill p-{{ feature.health|replace(' ','-') }}">{{ feature.health }}</span>
+    {% if feature.areas %}<span class="muted small"> · Areas: {{ feature.areas|join(', ') }}</span>{% endif %}
+  </p>
+</div>
+
+<div style="margin-top:16px">
+  {{ ui.case_filter_bar(filter_counts, active='all') }}
+</div>
+
+{{ ui.cases_table(feature.tests, asset_prefix=asset_prefix, open_failed=True, column_options=column_options) }}
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends "base.html.j2" %}
+{% import "macros.html.j2" as ui %}
+{% block banner %}
+{% if m.recommendation.color in ("review", "grey") %}
+<div class="banner {{ m.recommendation.color }}"><b>Many checks have not completed yet.</b>
+  Across {{ m.runs_count }} run(s), {{ m.summary.completed|default(m.summary.executed) }} of {{ m.summary.total }} checks have a completed result{% if m.summary.blocked|default(0) %}; {{ m.summary.blocked }} latest results could not run{% endif %}, so these results do not show the full picture yet.</div>
+{% endif %}
+{% endblock %}
+{% block content %}
+{% set health_name = {"Healthy": "Working", "Partly tested": "Partly checked", "At risk": "Minor problems", "Failing": "Needs attention", "Not tested": "Not checked yet", "Blocked": "Could not check"} %}
+{% set priority_name = {"Critical": "Urgent", "High": "High", "Medium": "Medium", "Low": "Low"} %}
+{% set l = m.latest %}
+<p class="small muted" style="margin:14px 0 0">This summary combines all {{ m.runs_count }} test run(s) from {{ m.first_run_at }} to {{ l.started_at }}.
+  Each check shows its most recent result.</p>
+
+{% call ui.section("Dashboard", 1, show_count=False, scroll=False) %}
+<div class="grid two">
+  <div class="card" style="display:flex;gap:22px;align-items:center">
+    {{ charts.donut | safe }}
+    <div>
+      <p style="margin:0 0 10px"><b>{{ m.summary.passed }}</b> of <b>{{ m.summary.total }}</b> checks working</p>
+      <div class="legend stack">
+        <span><i style="background:#1e9e5a"></i>Working ({{ m.summary.passed }})</span>
+        <span><i style="background:#d64545"></i>Needs attention ({{ m.failures|length }})</span>
+        <span><i style="background:#e08a1e"></i>Could not run ({{ m.summary.blocked|default(0) }})</span>
+        <span><i style="background:#9aa3ad"></i>Not checked yet ({{ m.summary.skipped }})</span>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="muted small">OVERALL STATUS</div>
+    <p><span class="pill p-{{ m.recommendation.color }} verdict-pill">{{ stakeholder_label }}</span></p>
+    <p>{{ plain_verdict }}</p>
+  </div>
+</div>
+<div class="grid kpis" style="margin-top:14px">
+  <div class="card kpi"><div class="v">{{ m.endpoints|length }}</div><div class="l">Features covered</div></div>
+  <div class="card kpi"><div class="v green">{{ m.summary.passed }}</div><div class="l">Checks working</div></div>
+  <div class="card kpi"><div class="v red">{{ m.failures|length }}</div><div class="l">Checks needing attention</div></div>
+  <div class="card kpi"><div class="v orange">{{ m.summary.blocked|default(0) }}</div><div class="l">Checks that could not run</div></div>
+  <div class="card kpi"><div class="v grey">{{ m.summary.skipped }}</div><div class="l">Checks not run yet</div></div>
+  <div class="card kpi"><div class="v">{{ m.runs_count }}</div><div class="l">Test runs included</div></div>
+</div>
+{% endcall %}
+
+{% call ui.section("Features and modules", m.features|default([])|length) %}
+{{ ui.feature_overview(m.features|default([])) }}
+{% endcall %}
+
+{% call ui.section("Latest run", 1, show_count=False, scroll=False) %}
+<div class="card">
+  <p style="margin:0 0 8px"><span class="pill p-{{ l.color }}">{{ l.verdict }}</span>
+    &nbsp;<b>{{ l.started_at }}</b> on <b>{{ l.environment }}</b> (build {{ l.build_version }})</p>
+  <p style="margin:0">{{ l.completed|default(l.executed) }} of {{ l.total }} checks completed: {{ l.passed }} working, {{ l.failed + l.broken - (l.blocked|default(0)) }} needing attention, {{ l.blocked|default(0) }} could not run, {{ l.skipped }} not run.</p>
+</div>
+{% endcall %}
+
+{% call ui.section("What needs attention", plain_issues|length) %}
+{% if plain_issues %}
+<table>
+  <tr><th>Priority</th><th>What we found</th><th>Where</th><th>Checks</th></tr>
+  {% for i in plain_issues %}
+  <tr><td><span class="pill p-{{ i.severity }}">{{ priority_name[i.severity] }}</span></td>
+      <td>{{ i.plain }}</td><td>{{ i.where }}</td><td>{{ i.count }}</td></tr>
+  {% endfor %}
+</table>
+<p class="small muted">The development and QA teams have separate technical reports with full details.</p>
+{% else %}<p class="empty">Nothing needs attention. Everything that has been checked is working.</p>{% endif %}
+{% endcall %}
+
+{% call ui.section("Progress over time", m.history|length) %}
+<div class="card">
+  <div class="legend" style="margin-bottom:8px">
+    <span><i style="background:#1e9e5a"></i>Working</span><span><i style="background:#d64545"></i>Needs attention</span>
+    <span><i style="background:#e08a1e"></i>Could not complete</span><span><i style="background:#9aa3ad"></i>Not run</span>
+  </div>
+  <div class="chart-box" style="overflow-x:auto">{{ charts.trend | safe }}</div>
+</div>
+<table style="margin-top:12px">
+  <tr><th>When</th><th>Environment</th><th>Result</th><th>Checks completed</th><th>Working</th><th>Could not run</th></tr>
+  {% for r in m.history %}
+  <tr><td>{{ r.started_at }}</td><td>{{ r.environment }}</td><td><span class="pill p-{{ r.color }}">{{ r.verdict }}</span></td>
+      <td>{{ r.completed|default(r.executed) }} of {{ r.total }}</td><td>{{ r.passed }}</td><td>{{ r.blocked|default(0) }}</td></tr>
+  {% endfor %}
+</table>
+{% endcall %}
+
+{% call ui.section("How each part of the system is doing", m.endpoints|length) %}
+<table>
+  <tr><th>Part of the system</th><th>Status</th><th>Checks working</th><th>Last checked</th></tr>
+  {% for e in m.endpoints %}
+  <tr><td>{{ e.feature or e.endpoint }} <span class="muted small">({{ e.endpoint }})</span></td>
+      <td><span class="pill p-{{ e.health|replace(' ', '-') }}">{{ health_name[e.health] }}</span></td>
+      <td>{{ e.passed }} of {{ e.total }}</td><td>{{ e.last_checked or "Not yet" }}</td></tr>
+  {% endfor %}
+</table>
+{% endcall %}
+{% endblock %}

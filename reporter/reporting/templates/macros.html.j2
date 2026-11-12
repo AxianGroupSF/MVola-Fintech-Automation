@@ -1,0 +1,201 @@
+{#
+  Section rules (all reports):
+  - Expanded by default only when it has data that fits one screen (count <= big_at rows).
+  - Collapsed when empty, or when the data is large.
+  - The body scrolls when content overflows; fonts never change with the amount of data.
+#}
+{% macro section(title, count, big_at=8, scroll=True, show_count=True) -%}
+<details class="sec"{% if count and count <= big_at %} open{% endif %}>
+  <summary><h2>{{ title }}</h2>{% if show_count %}<span class="count">{{ count }}</span>{% endif %}
+    {% if not count %}<span class="hint">no data</span>{% elif count > big_at %}<span class="hint">collapsed - click to expand</span>{% endif %}</summary>
+  <div class="sec-body{% if not scroll %} open-height{% endif %}">{{ caller() }}</div>
+</details>
+{%- endmacro %}
+
+{% macro feature_overview(features) -%}
+{% if features %}
+<table class="features-table">
+  <tr><th>Feature / module</th><th>Total</th><th>Passed</th><th>Failed</th><th>Could not run</th><th>Overview</th></tr>
+  {% for f in features %}
+  <tr{% if f.href %} class="row-link" tabindex="0" role="link" data-href="{{ f.href }}" title="Open {{ f.feature }} details"{% endif %}>
+    <td><span class="feature-link">{{ f.feature }}</span></td>
+    <td>{{ f.total }}</td>
+    <td>{{ f.passed }}</td>
+    <td>{{ f.product_fail }}</td>
+    <td>{{ f.blocked }}</td>
+    <td class="small">{{ f.summary }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}<p class="empty">No features in this run.</p>{% endif %}
+{%- endmacro %}
+
+{% macro case_detail_body(t, asset_prefix='') -%}
+<table class="detail-grid">
+  <tr><th>Case ID</th><td>{{ t.case_id }}</td><th>Feature</th><td>{{ t.feature or 'Unassigned' }}</td></tr>
+  <tr><th>Screen / area</th><td>{{ t.endpoint }}</td><th>Type</th><td>{{ t.test_type }}</td></tr>
+  <tr><th>Priority</th><td>{{ t.priority }}</td><th>Duration</th><td>{{ t.duration_ms }} ms</td></tr>
+  <tr><th>Expected</th><td colspan="3">{{ t.expected_result or '—' }}</td></tr>
+  <tr><th>Actual</th><td colspan="3">{{ t.actual_result or '—' }}</td></tr>
+  {% if t.skip_reason %}<tr><th>Skip / blocker</th><td colspan="3">{{ t.skip_reason }}</td></tr>{% endif %}
+  {% if t.error %}<tr><th>Error</th><td colspan="3">{{ t.error }}</td></tr>{% endif %}
+  {% if t.ai_fix %}<tr><th>AI note</th><td colspan="3" class="ai">{{ t.ai_fix }}</td></tr>{% endif %}
+  {% if t.plain %}<tr><th>Plain finding</th><td colspan="3">{{ t.plain }}</td></tr>{% endif %}
+  {% if t.fix %}<tr><th>Suggested fix</th><td colspan="3">{{ t.fix }}</td></tr>{% endif %}
+  {% if t.bug_ref %}<tr><th>Bug ref</th><td colspan="3">{{ t.bug_ref }}</td></tr>{% endif %}
+</table>
+
+{% if t.screenshots %}
+<h3>Screenshots</h3>
+<div class="shots">
+  {% for s in t.screenshots %}
+  <a href="{{ asset_prefix }}{{ s.path }}" target="_blank" rel="noopener">
+    <img src="{{ asset_prefix }}{{ s.path }}" alt="{{ s.name }}" loading="lazy">
+    <div class="muted small">{{ s.name }}</div>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% set other = t.attachments|default([])|rejectattr('kind', 'equalto', 'screenshot')|list %}
+{% if other %}
+<h3>Other attachments</h3>
+<ul>
+  {% for a in other %}
+  <li><a href="{{ asset_prefix }}{{ a.path }}" target="_blank" rel="noopener">{{ a.name }}</a></li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+{% if t.calls %}
+<h3>HTTP calls</h3>
+{% for c in t.calls %}
+  <h3 class="small">{{ c.method }} {{ c.url }} &rarr; {{ c.status or c.error }} ({{ c.duration_ms }} ms)</h3>
+  {% if c.curl %}<b class="small">Reproduce</b><pre>{{ c.curl }}</pre>{% endif %}
+  {% if c.request_body %}<b class="small">Request body</b><pre>{{ c.request_body }}</pre>{% endif %}
+  {% if c.response_body %}<b class="small">Response body</b><pre>{{ c.response_body }}</pre>{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if t.traceback %}
+<h3>Traceback</h3>
+<pre>{{ t.traceback }}</pre>
+{% endif %}
+{% if t.log %}
+<h3>Log</h3>
+<pre>{{ t.log }}</pre>
+{% endif %}
+{%- endmacro %}
+
+{% macro cases_table(tests, asset_prefix='', open_failed=False, column_options=None) -%}
+{% if tests %}
+{% set opts = column_options or {"priorities": [], "types": [], "statuses": []} %}
+<div class="table-wrap" data-case-list>
+<table class="cases-table" data-cases-table>
+  <thead>
+    <tr>
+      <th class="expand-cell"></th>
+      <th class="col-case">Case ID</th>
+      <th class="col-screen">Screen / area</th>
+      <th class="col-summary">Summary</th>
+      <th class="col-filterable" data-sort-key="priority">
+        <div class="th-stack">
+          <button type="button" class="sort-btn" data-sort="priority">Priority <span class="sort-ind"></span></button>
+          <select class="col-filter" data-col-filter="priority" title="Filter by priority">
+            <option value="">All priorities</option>
+            {% for p in opts.priorities %}<option value="{{ p|e }}">{{ p }}</option>{% endfor %}
+          </select>
+        </div>
+      </th>
+      <th class="col-filterable" data-sort-key="type">
+        <div class="th-stack">
+          <button type="button" class="sort-btn" data-sort="type">Type <span class="sort-ind"></span></button>
+          <select class="col-filter" data-col-filter="type" title="Filter by type">
+            <option value="">All types</option>
+            {% for ty in opts.types %}<option value="{{ ty|e }}">{{ ty }}</option>{% endfor %}
+          </select>
+        </div>
+      </th>
+      <th class="col-filterable" data-sort-key="status">
+        <div class="th-stack">
+          <button type="button" class="sort-btn" data-sort="status">Status <span class="sort-ind"></span></button>
+          <select class="col-filter" data-col-filter="status" title="Filter by status">
+            <option value="">All statuses</option>
+            {% for s in opts.statuses %}<option value="{{ s|e }}">{{ s }}</option>{% endfor %}
+          </select>
+        </div>
+      </th>
+      <th class="col-filterable col-duration" data-sort-key="duration">
+        <div class="th-stack">
+          <button type="button" class="sort-btn" data-sort="duration">Duration <span class="sort-ind"></span></button>
+          <select class="col-filter" data-col-filter="duration" title="Filter by duration range">
+            <option value="">All durations</option>
+            <option value="0-500">0 – 500 ms</option>
+            <option value="500-2000">500 ms – 2 s</option>
+            <option value="2000-5000">2 – 5 s</option>
+            <option value="5000-15000">5 – 15 s</option>
+            <option value="15000+">&gt; 15 s</option>
+          </select>
+        </div>
+      </th>
+    </tr>
+  </thead>
+  {% for t in tests %}
+  {% set open = open_failed and (t.status in ('failed', 'broken') or t.screenshots) %}
+  {% set pri = t.priority or 'Medium' %}
+  {% set st_label = t.status_label %}
+  {% set status_pill = 'Could-not-run' if t.blocker else t.status %}
+  <tbody class="case-group{% if open %} open{% endif %}"
+         data-case-item
+         data-status="{{ t.status }}"
+         data-status-label="{{ st_label|e }}"
+         data-blocked="{{ 1 if t.blocker else 0 }}"
+         data-product="{{ 1 if t.status in ('failed', 'broken') and not t.blocker else 0 }}"
+         data-priority="{{ pri|e }}"
+         data-type="{{ (t.test_type or '')|e }}"
+         data-duration-ms="{{ t.duration_ms|int }}"
+         data-case-id="{{ t.case_id|e }}"
+         data-search="{{ (t.case_id ~ ' ' ~ t.summary ~ ' ' ~ t.endpoint ~ ' ' ~ (t.feature or '') ~ ' ' ~ (t.error or ''))|lower|e }}">
+    <tr class="case-row" tabindex="0" title="Click to expand or collapse details">
+      <td class="expand-cell"><span class="expand-icon" aria-hidden="true"></span></td>
+      <td class="col-case"><b>{{ t.case_id }}</b></td>
+      <td class="col-screen">{{ t.endpoint }}</td>
+      <td class="col-summary">{{ t.summary }}</td>
+      <td><span class="pill p-{{ pri }}">{{ pri }}</span></td>
+      <td class="small type-cell">{{ t.test_type }}</td>
+      <td><span class="pill p-{{ status_pill }}">{{ st_label }}</span></td>
+      <td class="col-duration small">
+        {% if t.duration_ms >= 1000 %}{{ '%.1f'|format(t.duration_ms / 1000) }} s{% else %}{{ t.duration_ms }} ms{% endif %}
+      </td>
+    </tr>
+    <tr class="case-detail">
+      <td colspan="8">
+        {{ case_detail_body(t, asset_prefix) }}
+      </td>
+    </tr>
+  </tbody>
+  {% endfor %}
+</table>
+</div>
+{% else %}<p class="empty">No test cases.</p>{% endif %}
+{%- endmacro %}
+
+{% macro case_filter_bar(counts, active='all') -%}
+<div class="filter-bar" data-case-filters>
+  <button type="button" class="filter-chip{% if active == 'all' %} active{% endif %}" data-filter="all">All <span class="n">{{ counts.total }}</span></button>
+  <button type="button" class="filter-chip{% if active == 'passed' %} active{% endif %}" data-filter="passed">Passed <span class="n">{{ counts.passed }}</span></button>
+  <button type="button" class="filter-chip{% if active == 'failed' %} active{% endif %}" data-filter="failed">Failed <span class="n">{{ counts.failed }}</span></button>
+  <button type="button" class="filter-chip{% if active == 'broken' %} active{% endif %}" data-filter="broken">Broken <span class="n">{{ counts.broken_product }}</span></button>
+  <button type="button" class="filter-chip{% if active == 'blocked' %} active{% endif %}" data-filter="blocked">Could not run <span class="n">{{ counts.blocked }}</span></button>
+  <button type="button" class="filter-chip{% if active == 'skipped' %} active{% endif %}" data-filter="skipped">Not run <span class="n">{{ counts.skipped }}</span></button>
+  <button type="button" class="filter-chip{% if active == 'product' %} active{% endif %}" data-filter="product">Product defects <span class="n">{{ counts.product }}</span></button>
+</div>
+<div class="case-toolbar">
+  <input class="search" type="search" data-case-search placeholder="Filter by case ID, summary, screen, feature…" autocomplete="off">
+  <div class="expand-actions">
+    <button type="button" class="tool-btn" data-expand-all>Expand all</button>
+    <button type="button" class="tool-btn" data-collapse-all>Collapse all</button>
+  </div>
+</div>
+<p class="muted small">Showing <b data-case-count>{{ counts.total }}</b> case(s). Column filters (Priority, Type, Status, Duration) and search update the dashboard counts. Click a row for full details.</p>
+{%- endmacro %}

@@ -1,0 +1,46 @@
+Subject: {{ m.api_title }} test results - {{ m.environment }} - {{ m.recommendation.verdict }}
+
+Dear {{ cto_name or "[CTO name]" }},
+
+Please find below the {{ m.results_phrase }} for {{ m.project_name }} on the {{ m.environment }} environment (build {{ m.build_version }}), executed on {{ m.started_at }}.
+
+Summary
+- {{ m.area_word }} covered: {{ m.endpoints|length }}
+- Automated checks: {{ m.summary.total }} ({{ m.summary.completed|default(m.summary.executed) }} completed, {{ m.summary.blocked|default(0) }} could not run, {{ m.summary.skipped }} not executed)
+- Passed: {{ m.summary.passed }} ({{ m.summary.pass_rate }}% of completed)
+- Product defects: {{ m.failures|length }} ({% for s in ["Critical","High","Medium","Low"] %}{{ m.by_severity.get(s, 0) }} {{ s }}{% if not loop.last %}, {% endif %}{% endfor %})
+
+Recommendation: {{ m.recommendation.verdict }}
+{{ m.recommendation.reason }}
+{% if m.ai_summary %}
+
+{{ m.ai_summary }}
+{% endif %}
+{% if top_issues %}
+
+Key issues
+{% for f in top_issues %}
+{{ loop.index }}. [{{ f.severity }}] {{ f.endpoint }} - {{ f.title }} ({{ f.case_id }})
+{% endfor %}
+{% endif %}
+
+Next steps
+{% if m.blocked_tests %}
+- QA to clear the environment / setup blocker ({{ m.blocker_reasons[0].reason if m.blocker_reasons else "see QA report" }}) and re-run the {{ m.summary.blocked }} check(s) that could not run. Do not treat those as product bugs.
+{% endif %}
+{% if m.failures %}
+- Development team to fix the {{ m.by_severity.get('Critical', 0) + m.by_severity.get('High', 0) }} critical/high product issue(s); details and fix suggestions are in the attached Dev report.
+- QA to re-run the full suite once fixes are deployed and confirm closure.
+{% elif not m.blocked_tests %}
+- No blocking product issues. QA will continue regression runs on each new build.
+{% endif %}
+{% if m.skipped %}
+- {{ m.skipped|length }} check(s) were not executed and will be covered separately.
+{% endif %}
+
+Attachments: QA_Lead_Report.pdf, Stakeholder_Report.pdf{% if m.failures %}, Dev_Report.pdf{% endif %}
+
+
+Best regards,
+{{ qa_lead_name or "[QA Lead name]" }}
+QA Lead

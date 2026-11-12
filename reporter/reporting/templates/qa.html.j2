@@ -1,0 +1,132 @@
+{% extends "base.html.j2" %}
+{% import "macros.html.j2" as ui %}
+{% block content %}
+{% call ui.section("Run snapshot", 1, show_count=False, scroll=False) %}
+<div class="grid two">
+  <div class="card">
+    <div class="muted small">VERDICT</div>
+    <p><span class="pill p-{{ m.recommendation.color }} verdict-pill">{{ m.recommendation.verdict }}</span></p>
+    <p>{{ m.recommendation.reason }}</p>
+  </div>
+  <div class="card" style="display:flex;gap:22px;align-items:center">
+    {{ charts.donut | safe }}
+    <div class="legend stack">
+      <span><i style="background:#1e9e5a"></i>Passed {{ m.summary.passed }}</span>
+      <span><i style="background:#d64545"></i>Failed {{ m.summary.failed }}</span>
+      <span><i style="background:#e08a1e"></i>Broken {{ m.summary.broken }}</span>
+      <span><i style="background:#9aa3ad"></i>Skipped {{ m.summary.skipped }}</span>
+    </div>
+  </div>
+</div>
+<div class="grid kpis" style="margin-top:14px">
+  <a class="card kpi kpi-link" href="cases.html?f=all"><div class="v">{{ m.summary.total }}</div><div class="l">Automated tests</div></a>
+  <div class="card kpi"><div class="v {{ 'review' if m.summary.completed_pct|default(m.summary.executed_pct) < m.min_executed_pct else 'green' }}">{{ m.summary.completed_pct|default(m.summary.executed_pct) }}%</div><div class="l">Completed ({{ m.summary.completed|default(m.summary.executed) }})</div></div>
+  <div class="card kpi"><div class="v">{{ m.summary.pass_rate }}%</div><div class="l">Pass rate (completed)</div></div>
+  <a class="card kpi kpi-link" href="cases.html?f=product"><div class="v red">{{ m.failures|length }}</div><div class="l">Product defects</div></a>
+  <a class="card kpi kpi-link" href="cases.html?f=blocked"><div class="v orange">{{ blockers|length }}</div><div class="l">Blockers / actions</div></a>
+  <a class="card kpi kpi-link" href="cases.html?f=all"><div class="v">{{ m.planned_cases|length }}</div><div class="l">Planned cases</div></a>
+</div>
+<p class="small muted" style="margin-top:8px">Click a status tile to open filtered cases with expandable details.</p>
+<table style="margin-top:14px">
+  <tr><th>Environment</th><td>{{ m.environment }} ({{ m.base_url }})</td><th>Build</th><td>{{ m.build_version }}</td></tr>
+  <tr><th>Run</th><td>{{ m.run_id }}</td><th>Started / duration</th><td>{{ m.started_at }} / {{ m.duration_s }} s</td></tr>
+</table>
+{% endcall %}
+
+{% call ui.section("Features and modules", m.features|default([])|length) %}
+{{ ui.feature_overview(m.features|default([])) }}
+{% endcall %}
+
+{% call ui.section("Talking points (ready to share)", talking_points|length) %}
+<ol>{% for p in talking_points %}<li style="margin:4px 0">{{ p }}</li>{% endfor %}</ol>
+{% endcall %}
+
+{% call ui.section("Blockers and actions for QA", blockers|length) %}
+{% if blockers %}
+<table><tr><th>Priority</th><th>Type</th><th>What</th><th>Action</th></tr>
+{% for b in blockers %}<tr><td><span class="pill p-{{ b.severity }}">{{ b.severity }}</span></td><td>{{ b.kind }}</td><td>{{ b.text }}</td><td>{{ b.action }}</td></tr>{% endfor %}
+</table>
+{% else %}<p class="empty">No blockers.</p>{% endif %}
+{% endcall %}
+
+{% call ui.section("If someone asks", faq|length) %}
+{% for q, a in faq %}<div style="margin:0 0 12px"><b>{{ q }}</b><div>{{ a }}</div></div>{% endfor %}
+{% endcall %}
+
+{% call ui.section("Could not run", m.blocked_tests|default([])|length) %}
+{% if m.blocked_tests %}
+<table><tr><th>Problem</th><th>Tests</th><th>Endpoints</th></tr>
+{% for s in m.blocker_reasons %}<tr><td>{{ s.reason }}</td><td>{{ s.count }}</td><td class="small">{{ s.endpoints|join(", ") }}</td></tr>{% endfor %}
+</table>
+<table style="margin-top:12px"><tr><th>#</th><th>Test case</th><th>Endpoint</th><th>Reason</th></tr>
+{% for f in m.blocked_tests %}<tr><td>{{ loop.index }}</td><td>{{ f.case_id }}</td><td>{{ f.endpoint }}</td>
+  <td class="small">{{ f.title or f.actual_result or f.skip_reason or "Could not run" }}</td></tr>{% endfor %}
+</table>
+<p class="small muted">These are environment / setup / not-automated blockers, not product defects. Do not file them as Jira bugs.</p>
+{% else %}<p class="empty">Every started test reached its intended check.</p>{% endif %}
+{% endcall %}
+
+{% call ui.section("Product defects found", m.failures|length) %}
+{% if m.failures %}
+<table><tr><th>Bug ref</th><th>Severity</th><th>Test case</th><th>Endpoint</th><th>Issue</th><th>Expected</th><th>Actual</th><th>Suggested fix</th></tr>
+{% for f in m.failures %}<tr><td>{{ f.bug_ref }}</td><td><span class="pill p-{{ f.severity }}">{{ f.severity }}</span></td><td>{{ f.case_id }}</td>
+  <td>{{ f.endpoint }}</td><td>{{ f.title }}<div class="muted small">{{ f.summary }}</div></td>
+  <td>{{ f.expected_status|join(" / ") or f.expected_result }}</td><td>{{ f.actual_status or "no response" }}</td>
+  <td class="small">{{ f.ai_fix or f.fix }}</td></tr>{% endfor %}
+</table>
+<p class="small muted">Full evidence per bug: Ready to Report Bugs.md and Dev_Report.</p>
+{% else %}<p class="empty">No product defects in the checks that completed.</p>{% endif %}
+{% endcall %}
+
+{% call ui.section("Not executed - reasons", m.skip_reasons|length) %}
+{% if m.skip_reasons %}
+<table><tr><th>Reason</th><th>Tests</th><th>Endpoints affected</th></tr>
+{% for s in m.skip_reasons %}<tr><td>{{ s.reason }}</td><td>{{ s.count }}</td><td class="small">{{ s.endpoints|join(", ") }}</td></tr>{% endfor %}</table>
+{% else %}<p class="empty">Every automated test was executed.</p>{% endif %}
+{% endcall %}
+
+{% call ui.section("Open questions (documentation gaps)", m.open_questions|length) %}
+{% if m.open_questions %}
+<table><tr><th>#</th><th>Question</th><th>Impact</th><th>Answer</th></tr>
+{% for q in m.open_questions %}<tr><td>{{ loop.index }}</td><td>{{ q.question }}</td><td>{{ q.impact }}</td><td>{{ q.answer or "Pending" }}</td></tr>{% endfor %}</table>
+{% else %}<p class="empty">No open questions.</p>{% endif %}
+{% endcall %}
+
+{% call ui.section("Status-code coverage matrix", m.coverage_matrix.rows|length) %}
+{% if m.coverage_matrix.rows %}
+<p class="small muted">Worst result among the planned cases for each endpoint and expected status code. Manual = planned but not automated.</p>
+<table><tr><th>Endpoint</th>{% for c in m.coverage_matrix.codes %}<th>{{ c }}</th>{% endfor %}</tr>
+{% for r in m.coverage_matrix.rows %}<tr><td>{{ r.endpoint }}</td>
+  {% for c in m.coverage_matrix.codes %}<td>{% if r.cells.get(c) %}<span class="pill p-{{ r.cells[c] if r.cells[c] != 'manual' else 'Low' }}">{{ r.cells[c] }}</span>{% endif %}</td>{% endfor %}</tr>{% endfor %}
+</table>
+{% else %}<p class="empty">No planned cases with expected status codes.</p>{% endif %}
+{% endcall %}
+
+{% call ui.section("Endpoint health", m.endpoints|length) %}
+<table><tr><th>Endpoint</th><th>Health</th><th>Passed / Executed / Total</th><th>Notes</th></tr>
+{% for e in m.endpoints %}<tr><td>{{ e.endpoint }}</td><td><span class="pill p-{{ e.health|replace(' ', '-') }}">{{ e.health }}</span></td>
+  <td>{{ e.passed }} / {{ e.executed }} / {{ e.total }}</td><td class="small">{{ e.ai_note }}</td></tr>{% endfor %}
+</table>
+{% endcall %}
+
+{% call ui.section("Slowest executed tests", m.slowest|length) %}
+{% if m.slowest %}
+<table><tr><th>Test case</th><th>Endpoint</th><th>Status</th><th>Duration (ms)</th></tr>
+{% for t in m.slowest %}<tr><td>{{ t.case_id }}</td><td>{{ t.endpoint }}</td><td><span class="pill p-{{ t.status }}">{{ t.status_label }}</span></td><td>{{ t.duration_ms }}</td></tr>{% endfor %}</table>
+{% else %}<p class="empty">No executed tests.</p>{% endif %}
+{% endcall %}
+
+{% call ui.section("Traceability (case - result - bug)", m.tests|length) %}
+<table><tr><th>Test case</th><th>Feature</th><th>Endpoint</th><th>Type</th><th>Priority</th><th>Result</th><th>Bug ref</th></tr>
+{% for t in m.tests %}<tr><td>{{ t.case_id }}</td><td>{{ t.feature }}</td><td>{{ t.endpoint }}</td><td>{{ t.test_type }}</td><td>{{ t.priority }}</td>
+  <td><span class="pill p-{{ t.status }}">{{ t.status_label }}</span></td><td>{{ t.bug_ref or "" }}</td></tr>{% endfor %}
+</table>
+{% endcall %}
+
+{% call ui.section("Manual / not automated test cases", m.manual_cases|length) %}
+{% if m.manual_cases %}
+<table><tr><th>ID</th><th>Endpoint</th><th>Summary</th><th>Reason</th></tr>
+{% for c in m.manual_cases %}<tr><td>{{ c.id }}</td><td>{{ c.endpoint }}</td><td>{{ c.summary }}</td><td>{{ c.manual_reason or "Not automated" }}</td></tr>{% endfor %}</table>
+{% else %}<p class="empty">All planned cases are automated.</p>{% endif %}
+{% endcall %}
+{% endblock %}
