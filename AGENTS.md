@@ -94,6 +94,7 @@ Rules:
 - Verify important state changes after clicking.
 - Never blindly repeat payment or submission actions.
 - Avoid retries that could duplicate transactions.
+- Account-sensitive execution follows section 13. Do not rerun those cases to check a fix.
 
 ## 8. TestNG and Parallel Execution Rules
 - Keep test cases independent.
@@ -141,7 +142,7 @@ During implementation:
 
 After implementation:
 1. Run Maven compilation.
-2. Run relevant TestNG tests.
+2. Run an account-sensitive test only once, and only when this request explicitly approved that run. Section 13 overrides this step.
 3. Report passed and failed tests.
 4. List all modified files.
 5. Explain unresolved limitations.
@@ -156,3 +157,17 @@ A task is complete only when:
 - Relevant tests are executed or blockers documented.
 - Existing functionality remains compatible.
 - A clear implementation summary is provided.
+
+## 13. Account-Sensitive Execution Safety
+These rules override any instruction to rerun tests, run a whole class, or continue after a login failure.
+
+- Every TC-ID executes only once per approved run. A new Maven command or a new Cursor session is not a new approval.
+- Never automatically rerun an invalid PIN, valid PIN login, OTP, password, financial transaction, or other account-sensitive test.
+- If a test fails, inspect the error, screenshot, and relevant code, then fix the code. Do not launch the test again to verify that fix.
+- Debug PIN entry with `LOGIN_001` or another check that does not submit a complete PIN. Do not run `LOGIN_002`, `LOGIN_003`, or `mvn test -Dtest=LoginTest` for that debugging.
+- Never rerun a whole test class to verify one code change. A class command executes every selected TC-ID.
+- Repeating any account-sensitive submission requires the user's explicit approval in the current request. Approval from an earlier run does not carry forward.
+- Stop login execution immediately when an account-blocked dialog appears. Do not dismiss it into PIN reset, do not enter another PIN, and do not continue to the next login test.
+- Before any test command, read `.cursor/account-sensitive-executions.json`. If that TC-ID already has a submission, or login submissions are halted, do not run it.
+- Immediately after an account-sensitive submission, append the TC-ID, method, time, command, and result to that record. Do not store PIN, OTP, or password values. Update the record before any further command.
+- Do not change the framework, Page Objects, locators, screenshots, or reporting in order to bypass this record.

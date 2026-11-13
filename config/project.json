@@ -11,6 +11,7 @@
     "pin",
     "otp",
     "phone",
+    "recipientPhone",
     "password",
     "username",
     "deviceLockPin"
@@ -23,6 +24,7 @@
     "pin",
     "otp",
     "phone",
+    "recipientPhone",
     "apikey",
     "api_key",
     "authorization",

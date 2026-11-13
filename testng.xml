@@ -9,14 +9,12 @@
         <listener class-name="com.qaframework.listeners.TestListener"/>
     </listeners>
 
-    <!-- Framework unit tests. They do not install or launch an application. -->
-    <test name="Framework">
+    <!-- Add MvolaAutomation page tests under src/test/java/com/qaframework/tests -->
+    <test name="Login">
         <parameter name="platform" value="android"/>
         <classes>
-            <class name="com.qaframework.utils.SmartLocatorTest"/>
+            <class name="com.qaframework.tests.LoginTest"/>
         </classes>
     </test>
-
-    <!-- Add MvolaAutomation page tests under src/test/java/com/qaframework/tests -->
 
 </suite>

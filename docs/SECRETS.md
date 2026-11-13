@@ -5,6 +5,7 @@ Do not commit phones, PINs, OTPs, passwords, or device unlock PINs.
 Keep these keys empty in `src/main/resources/config.properties`:
 
 - `phone`
+- `recipientPhone`
 - `pin`
 - `otp`
 - `username`

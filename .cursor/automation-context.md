@@ -22,7 +22,6 @@ Application pages and tests are not implemented yet. Add one page object and one
 
 - Pages: `src/test/java/com/qaframework/pages/` (empty)
 - Tests: `src/test/java/com/qaframework/tests/` (empty)
-- Framework unit test: `src/test/java/com/qaframework/utils/SmartLocatorTest.java` (no device and no application)
 - Suite: `testng.xml`
 
 ## Patterns
@@ -38,4 +37,4 @@ mvn -DskipTests test-compile
 mvn test
 ```
 
-`mvn test` uses `testng.xml`. Until application tests are added, that suite runs `SmartLocatorTest` only and does not install or launch an application.
+`mvn test` uses `testng.xml`. The suite runs the registered application tests, including `LoginTest`.

@@ -1,0 +1,99 @@
+{
+  "loginSubmissionsHalted": false,
+  "haltReason": "The account-blocked dialog was not shown on the approved 2026-11-13 18:17 login run. LOGIN_002 showed the invalid PIN dialog and returned to the PIN screen. Further PIN submissions still require explicit approval in the current request.",
+  "haltObservedAt": "2026-11-13T16:42:42+05:00",
+  "haltClearedAt": "2026-11-13T18:17:52+05:00",
+  "haltEvidence": "Earlier dialog text: account blocked due to multiple invalid login attempts. That dialog was not present when LOGIN_002 ran at 18:17.",
+  "submissions": [
+    {
+      "tcId": "LOGIN_002",
+      "method": "LOGIN_002_invalidPinShowsError",
+      "sensitiveAction": "invalid PIN submission",
+      "submittedAt": "2026-11-13T16:30:58+05:00",
+      "command": "mvn test -Dtest=LoginTest",
+      "result": "FAIL",
+      "report": "reports/2026-11-13_16-30-58_qa",
+      "evidence": "The invalid PIN dialog was displayed. The test then failed because the PIN screen did not remain displayed."
+    },
+    {
+      "tcId": "LOGIN_002",
+      "method": "LOGIN_002_invalidPinShowsError",
+      "sensitiveAction": "invalid PIN submission",
+      "submittedAt": "2026-11-13T16:34:14+05:00",
+      "command": "mvn test -Dtest=LoginTest",
+      "result": "PASS",
+      "report": "reports/2026-11-13_16-34-14_qa",
+      "evidence": "Invalid PIN dialog was displayed and dismissed."
+    },
+    {
+      "tcId": "LOGIN_002",
+      "method": "LOGIN_002_invalidPinShowsError",
+      "sensitiveAction": "invalid PIN submission",
+      "submittedAt": "2026-11-13T16:36:10+05:00",
+      "command": "mvn test -Dtest=LoginTest",
+      "result": "PASS",
+      "report": "reports/2026-11-13_16-36-10_qa",
+      "evidence": "Invalid PIN dialog was displayed and dismissed."
+    },
+    {
+      "tcId": "LOGIN_002",
+      "method": "LOGIN_002_invalidPinShowsError",
+      "sensitiveAction": "invalid PIN submission",
+      "submittedAt": "2026-11-13T16:42:42+05:00",
+      "command": "mvn test -Dtest=LoginTest",
+      "result": "FAIL",
+      "report": "reports/2026-11-13_16-42-42_qa",
+      "evidence": "Four digits were submitted. The app showed the account-blocked dialog instead of the invalid PIN message."
+    },
+    {
+      "tcId": "LOGIN_003",
+      "method": "LOGIN_003_validPinOpensDashboard",
+      "sensitiveAction": "valid PIN submission",
+      "submittedAt": "2026-11-13T16:47:28+05:00",
+      "command": "mvn test -Dtest=LoginTest#LOGIN_003_validPinOpensDashboard",
+      "result": "FAIL",
+      "report": "reports/2026-11-13_16-47-28_qa",
+      "evidence": "The configured PIN was submitted. The app showed the account-blocked dialog and the dashboard did not open."
+    },
+    {
+      "tcId": "LOGIN_002",
+      "method": "LOGIN_002_invalidPinShowsError",
+      "sensitiveAction": "invalid PIN submission",
+      "submittedAt": "2026-11-13T18:17:30+05:00",
+      "command": "mvn test -Dtest=LoginTest#LOGIN_002_invalidPinShowsError",
+      "result": "PASS",
+      "report": "reports/2026-11-13_18-17-30_qa",
+      "evidence": "Invalid PIN dialog was displayed and dismissed. The PIN screen remained. The account-blocked dialog was not shown."
+    },
+    {
+      "tcId": "LOGIN_003",
+      "method": "LOGIN_003_validPinOpensDashboard",
+      "sensitiveAction": "valid PIN submission",
+      "submittedAt": "2026-11-13T18:18:15+05:00",
+      "command": "mvn test -Dtest=LoginTest#LOGIN_003_validPinOpensDashboard",
+      "result": "FAIL",
+      "report": "reports/2026-11-13_18-18-15_qa",
+      "evidence": "The configured PIN was accepted. Welcome Back is visible, but a promotional sheet with Play Now covers Send Money. The account-blocked dialog was not shown."
+    },
+    {
+      "tcId": "LOGIN_002",
+      "method": "LOGIN_002_invalidPinShowsError",
+      "sensitiveAction": "invalid PIN submission",
+      "submittedAt": "2026-11-13T18:28:55+05:00",
+      "command": "mvn test -Dtest=LoginTest#LOGIN_002_invalidPinShowsError",
+      "result": "PASS",
+      "report": "reports/2026-11-13_18-28-55_qa",
+      "evidence": "Invalid PIN dialog was displayed and dismissed. The PIN screen remained. The account-blocked dialog was not shown."
+    },
+    {
+      "tcId": "LOGIN_003",
+      "method": "LOGIN_003_validPinOpensDashboard",
+      "sensitiveAction": "valid PIN submission",
+      "submittedAt": "2026-11-13T18:29:42+05:00",
+      "command": "mvn test -Dtest=LoginTest#LOGIN_003_validPinOpensDashboard",
+      "result": "PASS",
+      "report": "reports/2026-11-13_18-29-42_qa",
+      "evidence": "The configured PIN was accepted. Dashboard and Send Money were visible. No account-blocked dialog and no promotional sheet was in the way."
+    }
+  ]
+}
