@@ -43,8 +43,10 @@ public class LoginPage extends BasePage {
             "Dashboard", "Main dashboard", "semantics_dashboard_v4", null, null, null);
     private final SmartLocator sendMoney = SmartLocator.verified(
             "Send Money", "dashboard_item_Send_Money", null, null, null, null);
-    private final SmartLocator eventBanner = SmartLocator.verified(
-            "Event banner", "Event banner", "semantics_event_banner_bottom_sheet", null, null, null);
+    private static final String EVENT_BANNER_ID = "semantics_event_banner_bottom_sheet";
+    /** Safety cap on how many popups are closed in a row. */
+    private static final int MAX_POPUPS = 3;
+
     private final SmartLocator eventBannerClose = SmartLocator.verified(
             "Event banner close", "Close", "semantics_event_banner_close", null, null, null);
     private final SmartLocator sideDrawerButton = SmartLocator.verified(
@@ -82,7 +84,10 @@ public class LoginPage extends BasePage {
             requireFocusedEmptyPinField();
             return;
         }
-        if (source.contains("semantics_dashboard_v4") || source.contains("Main dashboard")) {
+        if (source.contains(EVENT_BANNER_ID)) {
+            click(eventBannerClose);
+            logoutFromDashboard();
+        } else if (source.contains("semantics_dashboard_v4") || source.contains("Main dashboard")) {
             logoutFromDashboard();
         } else if (source.contains("semantics_invalid_pin_popup")) {
             dismissInvalidPinError();
@@ -151,14 +156,22 @@ public class LoginPage extends BasePage {
      */
     public PinSubmission awaitAuthenticationResult() {
         String source = awaitPageSource(page -> classify(page) != PinSubmission.UNKNOWN);
-        return source.isEmpty() ? PinSubmission.UNKNOWN : classify(source);
+        PinSubmission result = source.isEmpty() ? PinSubmission.UNKNOWN : classify(source);
+        if (result == PinSubmission.UNKNOWN) {
+            // A skipped test gets no automatic screenshot, so keep the unexpected screen as evidence.
+            takeScreenshot("login_result_unknown");
+        }
+        return result;
     }
 
     /**
      * The launch screenshot can be the splash logo. One explicit wait covers that transition.
      */
     private String awaitPageSource(java.util.function.Predicate<String> ready) {
-        int timeoutSeconds = ConfigReader.getInt("explicitWait", 20);
+        return awaitPageSource(ready, ConfigReader.getInt("explicitWait", 20));
+    }
+
+    private String awaitPageSource(java.util.function.Predicate<String> ready, int timeoutSeconds) {
         String[] seen = {""};
         ExpectedCondition<Boolean> readySource = driver -> {
             try {
@@ -188,15 +201,25 @@ public class LoginPage extends BasePage {
     }
 
     /**
-     * The event banner sheet slides in over the dashboard shortly after login. When it is shown, it is
-     * closed with its cross icon. Returns whether it was shown. A missing banner is not an error.
+     * Back-office popups are optional and can appear a few seconds after the dashboard. Waits up to
+     * {@code popupWait} seconds for the event banner, closes it with its cross icon, and looks again so a
+     * second popup is handled too (at most {@link #MAX_POPUPS}). No popup is not an error.
+     * Returns how many were closed. Login success is proven by the dashboard checks, not by this.
      */
-    public boolean closeEventBannerIfShown() {
-        if (!isDisplayed(eventBanner)) {
-            return false;
+    public int closeOptionalPopups() {
+        int popupWait = ConfigReader.getInt("popupWait", 5);
+        int closed = 0;
+        while (closed < MAX_POPUPS
+                && !awaitPageSource(page -> page.contains(EVENT_BANNER_ID), popupWait).isEmpty()) {
+            click(eventBannerClose);
+            closed++;
+            if (awaitPageSource(page -> !page.contains(EVENT_BANNER_ID)).isEmpty()) {
+                throw new StepFailureException("Close popup", "Event banner close",
+                        "The event banner was still shown after its cross icon was clicked.", null);
+            }
+            log.info("Closed event banner {}", closed);
         }
-        click(eventBannerClose);
-        return true;
+        return closed;
     }
 
     public boolean isDashboardMarkerVisible() {
@@ -309,17 +332,24 @@ public class LoginPage extends BasePage {
     }
 
     private void requirePinLength(int expectedLength) {
+        int[] seenLength = {-1};
+        String[] seenFocus = {"unread"};
         boolean lengthShown = WaitUtils.waitForCondition(driver -> {
             try {
-                String shown = waitForElementVisible(pinField).getAttribute("text");
-                return (shown == null ? 0 : shown.length()) == expectedLength;
+                WebElement field = waitForElementVisible(pinField);
+                String shown = field.getAttribute("text");
+                seenLength[0] = shown == null ? 0 : shown.length();
+                seenFocus[0] = String.valueOf(field.getAttribute("focused"));
+                return seenLength[0] == expectedLength;
             } catch (RuntimeException unread) {
                 return false;
             }
         }, ConfigReader.getInt("explicitWait", 20));
         if (!lengthShown) {
-            throw new BlockedTestException(
-                    "BLOCKED: The PIN field length was not verified, so PIN entry stopped.");
+            takeScreenshot("PIN_entry_blocked");
+            throw new BlockedTestException("BLOCKED: The PIN field showed " + seenLength[0] + " of "
+                    + expectedLength + " digit(s) (focused=" + seenFocus[0]
+                    + "), so PIN entry stopped before the last digit. No PIN was submitted.");
         }
     }
 
@@ -359,7 +389,10 @@ public class LoginPage extends BasePage {
                 || source.contains("semantics_invalid_pin_popup")) {
             return PinSubmission.INVALID_PIN;
         }
-        if (source.contains("semantics_dashboard_v4") || source.contains("Main dashboard")) {
+        // While a popup sheet is open the dashboard nodes are not in the hierarchy. The banner only shows
+        // that the app is past the PIN screen. Success is verified by the dashboard checks after popups close.
+        if (source.contains("semantics_dashboard_v4") || source.contains("Main dashboard")
+                || source.contains(EVENT_BANNER_ID)) {
             return PinSubmission.DASHBOARD;
         }
         return PinSubmission.UNKNOWN;

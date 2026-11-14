@@ -93,3 +93,6 @@ Thumbs.db
 ~$*
 *.swp
 *.swo
+
+# Local secrets (PINs, phone numbers). Never commit.
+config/local.properties

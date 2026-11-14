@@ -2,6 +2,8 @@ package com.qaframework.config;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Properties;
 
 /**
@@ -12,6 +14,8 @@ public final class ConfigReader {
 
     private static final Properties properties = new Properties();
     private static final String CONFIG_FILE = "config.properties";
+    private static final String LOCAL_CONFIG_PROPERTY = "localConfig";
+    private static final String DEFAULT_LOCAL_CONFIG = "config/local.properties";
 
     static {
         loadProperties();
@@ -28,6 +32,24 @@ public final class ConfigReader {
             properties.load(input);
         } catch (IOException e) {
             throw new RuntimeException("Failed to load " + CONFIG_FILE, e);
+        }
+        loadLocalOverrides();
+    }
+
+    /**
+     * Optional git-ignored file for secrets such as PINs, so every run (Maven, IDE, suite or single test)
+     * sees the same values without -D flags. Values in it replace config.properties.
+     * Path: config/local.properties, or the file named by -DlocalConfig=...
+     */
+    private static void loadLocalOverrides() {
+        Path local = Path.of(System.getProperty(LOCAL_CONFIG_PROPERTY, DEFAULT_LOCAL_CONFIG));
+        if (!Files.isRegularFile(local)) {
+            return;
+        }
+        try (InputStream input = Files.newInputStream(local)) {
+            properties.load(input);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load " + local, e);
         }
     }
 

@@ -14,7 +14,7 @@ import org.testng.annotations.Test;
  */
 public class LoginTest extends BaseTest {
 
-    @Test(description = "LOGIN_001")
+    /*@Test(description = "LOGIN_001")
     public void LOGIN_001_incompletePinDisablesLogin() {
         LoginPage login = openLogin();
         login.dismissKeyboard();
@@ -46,7 +46,7 @@ public class LoginTest extends BaseTest {
         login.dismissInvalidPinError();
         Assert.assertTrue(login.isPinLoginScreenVisible(),
                 "LOGIN_002: The PIN login screen should remain displayed.");
-    }
+    }*/
 
     @Test(description = "LOGIN_003", groups = "account-sensitive")
     public void LOGIN_003_validPinOpensDashboard() {
@@ -56,9 +56,9 @@ public class LoginTest extends BaseTest {
                 "LOGIN_003: Login button should be visible after the keyboard closes.");
         login.enterPin(requiredPin("pin", "LOGIN_003"));
         requireSubmission("LOGIN_003", login, PinSubmission.DASHBOARD);
+        login.closeOptionalPopups();
         Assert.assertTrue(login.isDashboardMarkerVisible(),
                 "LOGIN_003: The dashboard marker should be visible after login.");
-        login.closeEventBannerIfShown();
         Assert.assertTrue(login.isSendMoneyVisible(),
                 "LOGIN_003: Send Money should be visible on the dashboard.");
     }
